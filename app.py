@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import os
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
 from models import db, User, Progress, SystemConfig
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///progress.db'
+
+# Configuración para producción
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///progress.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['PREFERRED_URL_SCHEME'] = 'https'  # Para Azure
 
 db.init_app(app)
 
@@ -19,35 +22,42 @@ DEFAULT_CONFIG = {
 def initialize_database():
     """Inicializa la base de datos con datos por defecto"""
     with app.app_context():
-        db.create_all()
-        
-        # Crear usuario admin por defecto si no existe
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User(
-                username='admin',
-                password=generate_password_hash('admin123')
-            )
-            db.session.add(admin_user)
-            print("Usuario admin creado: admin / admin123")
-        
-        # Crear configuración por defecto si no existe
-        if not SystemConfig.query.first():
-            config = SystemConfig(
-                max_points=DEFAULT_CONFIG['max_points'],
-                points_per_click=DEFAULT_CONFIG['points_per_click']
-            )
-            db.session.add(config)
-        
-        # Crear progreso inicial si no existe
-        if not Progress.query.first():
-            progress = Progress(
-                current_points=0.0,
-                max_points=DEFAULT_CONFIG['max_points'],
-                points_per_click=DEFAULT_CONFIG['points_per_click']
-            )
-            db.session.add(progress)
-        
-        db.session.commit()
+        try:
+            db.create_all()
+            
+            # Crear usuario admin por defecto si no existe
+            if not User.query.filter_by(username='admin').first():
+                admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+                admin_user = User(
+                    username='admin',
+                    password=generate_password_hash(admin_password)
+                )
+                db.session.add(admin_user)
+                print("Usuario admin creado")
+            
+            # Crear configuración por defecto si no existe
+            if not SystemConfig.query.first():
+                config = SystemConfig(
+                    max_points=DEFAULT_CONFIG['max_points'],
+                    points_per_click=DEFAULT_CONFIG['points_per_click']
+                )
+                db.session.add(config)
+            
+            # Crear progreso inicial si no existe
+            if not Progress.query.first():
+                progress = Progress(
+                    current_points=0.0,
+                    max_points=DEFAULT_CONFIG['max_points'],
+                    points_per_click=DEFAULT_CONFIG['points_per_click']
+                )
+                db.session.add(progress)
+            
+            db.session.commit()
+            print("Base de datos inicializada correctamente")
+            
+        except Exception as e:
+            print(f"Error inicializando base de datos: {e}")
+            db.session.rollback()
 
 @app.before_request
 def setup_database():
@@ -56,28 +66,44 @@ def setup_database():
         initialize_database()
         app.database_initialized = True
 
+# Ruta para archivos estáticos
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
+
 @app.route('/')
 def index():
     progress = Progress.query.first()
     config = SystemConfig.query.first()
-    return render_template('index.html', progress=progress, config=config)
+    if progress and config:
+        return render_template('index.html', progress=progress, config=config)
+    else:
+        return "Error: Base de datos no inicializada", 500
 
 @app.route('/add_points', methods=['POST'])
 def add_points():
-    progress = Progress.query.first()
-    config = SystemConfig.query.first()
+    try:
+        progress = Progress.query.first()
+        config = SystemConfig.query.first()
+        
+        if not progress or not config:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
+        
+        progress.current_points += config.points_per_click
+        if progress.current_points > config.max_points:
+            progress.current_points = config.max_points
+        
+        db.session.commit()
+        
+        return jsonify({
+            'current_points': progress.current_points,
+            'max_points': config.max_points,
+            'percentage': (progress.current_points / config.max_points) * 100
+        })
     
-    progress.current_points += config.points_per_click
-    if progress.current_points > config.max_points:
-        progress.current_points = config.max_points
-    
-    db.session.commit()
-    
-    return jsonify({
-        'current_points': progress.current_points,
-        'max_points': config.max_points,
-        'percentage': (progress.current_points / config.max_points) * 100
-    })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -108,7 +134,10 @@ def admin_panel():
     progress = Progress.query.first()
     config = SystemConfig.query.first()
     
-    return render_template('admin_panel.html', progress=progress, config=config)
+    if progress and config:
+        return render_template('admin_panel.html', progress=progress, config=config)
+    else:
+        return "Error: Base de datos no inicializada", 500
 
 @app.route('/admin/update_config', methods=['POST'])
 def update_config():
@@ -121,6 +150,9 @@ def update_config():
         
         config = SystemConfig.query.first()
         progress = Progress.query.first()
+        
+        if not config or not progress:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
         
         config.max_points = max_points
         config.points_per_click = points_per_click
@@ -136,6 +168,7 @@ def update_config():
         return jsonify({'success': True})
     
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 400
 
 @app.route('/admin/reset_progress', methods=['POST'])
@@ -143,11 +176,19 @@ def reset_progress():
     if not session.get('admin_logged_in'):
         return jsonify({'error': 'No autorizado'}), 401
     
-    progress = Progress.query.first()
-    progress.current_points = 0.0
-    db.session.commit()
+    try:
+        progress = Progress.query.first()
+        if not progress:
+            return jsonify({'error': 'Progreso no encontrado'}), 500
+            
+        progress.current_points = 0.0
+        db.session.commit()
+        
+        return jsonify({'success': True})
     
-    return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/add_manual_points', methods=['POST'])
 def add_manual_points():
@@ -159,6 +200,9 @@ def add_manual_points():
         
         progress = Progress.query.first()
         config = SystemConfig.query.first()
+        
+        if not progress or not config:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
         
         progress.current_points += points_to_add
         if progress.current_points > config.max_points:
@@ -175,21 +219,48 @@ def add_manual_points():
         })
     
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 400
 
 @app.route('/api/progress')
 def get_progress():
-    progress = Progress.query.first()
-    config = SystemConfig.query.first()
+    try:
+        progress = Progress.query.first()
+        config = SystemConfig.query.first()
+        
+        if not progress or not config:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
+        
+        return jsonify({
+            'current_points': progress.current_points,
+            'max_points': config.max_points,
+            'percentage': (progress.current_points / config.max_points) * 100,
+            'points_per_click': config.points_per_click
+        })
     
-    return jsonify({
-        'current_points': progress.current_points,
-        'max_points': config.max_points,
-        'percentage': (progress.current_points / config.max_points) * 100,
-        'points_per_click': config.points_per_click
-    })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Health check para Azure
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'healthy', 'message': 'Application is running'})
+
+# Manejo de errores
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint no encontrado'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Error interno del servidor'}), 500
 
 if __name__ == '__main__':
     # Inicializar la base de datos al iniciar la aplicación
     initialize_database()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    
+    # Configurar puerto para Azure (usa 8000 para producción)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
