@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Barra de Progreso de Jean{% endblock %}
+
+{% block content %}
+<div class="main-panel">
+    <header>
+        <h1>Progress Bar App</h1>
+        <a href="{{ url_for('admin_login') }}" class="admin-btn">Admin</a>
+    </header>
+    
+    <div class="progress-section">
+        <div class="progress-info">
+            <span id="current-points">{{ "%.1f"|format(progress.current_points) }}</span>
+            <span>de</span>
+            <span id="max-points">{{ "%.1f"|format(config.max_points) }}</span>
+            <span>puntos</span>
+        </div>
+        
+        <div class="progress-bar-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" 
+                     style="width: {{ (progress.current_points / config.max_points) * 100 }}%"></div>
+            </div>
+            <div class="progress-percentage" id="progress-percentage">
+                {{ "%.1f"|format((progress.current_points / config.max_points) * 100) }}%
+            </div>
+        </div>
+        
+        <button id="add-points-btn" class="add-btn">
+            ¡Sumar Puntos! (+{{ "%.1f"|format(config.points_per_click) }})
+        </button>
+    </div>
+</div>
+{% endblock %}

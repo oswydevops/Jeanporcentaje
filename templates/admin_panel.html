@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<div class="admin-panel">
+    <header>
+        <h1>Panel de Administración</h1>
+        <div class="admin-actions">
+            <a href="{{ url_for('index') }}" class="btn secondary">Ver Panel Principal</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn logout">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <div class="admin-content">
+        <!-- Estadísticas -->
+        <section class="stats-section">
+            <h2>Estadísticas</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Puntos Actuales</h3>
+                    <div class="stat-value" id="stat-current-points">{{ progress.current_points }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Máximo de Puntos</h3>
+                    <div class="stat-value" id="stat-max-points">{{ config.max_points }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Puntos por Clic</h3>
+                    <div class="stat-value" id="stat-points-per-click">{{ config.points_per_click }}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Progreso</h3>
+                    <div class="stat-value" id="stat-percentage">
+                        {{ "%.1f"|format((progress.current_points / config.max_points) * 100) }}%
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visualización del Progreso -->
+        <section class="progress-visualization">
+            <h2>Visualización del Progreso</h2>
+            <div class="progress-bar-large">
+                <div class="progress-fill-large" id="admin-progress-fill" 
+                     style="width: {{ (progress.current_points / config.max_points) * 100 }}%"></div>
+            </div>
+            <div class="progress-numbers">
+                <span id="admin-current-points">{{ progress.current_points }}</span>
+                <span>/</span>
+                <span id="admin-max-points">{{ config.max_points }}</span>
+            </div>
+        </section>
+
+        <!-- Configuración del Sistema -->
+        <section class="config-section">
+            <h2>Configuración del Sistema</h2>
+            <form id="config-form" class="config-form">
+                <div class="form-group">
+                    <label for="max-points">Máximo de Puntos:</label>
+                    <input type="number" id="max-points" name="max_points" 
+                           step="0.1" min="0.1" value="{{ config.max_points }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="points-per-click">Puntos por Clic:</label>
+                    <input type="number" id="points-per-click" name="points_per_click" 
+                           step="0.1" min="0.1" value="{{ config.points_per_click }}" required>
+                </div>
+                <button type="submit" class="btn primary">Guardar Configuración</button>
+            </form>
+        </section>
+
+        <!-- Acciones Rápidas -->
+        <section class="quick-actions">
+            <h2>Acciones Rápidas</h2>
+            <div class="actions-grid">
+                <button id="reset-progress-btn" class="btn danger">Reiniciar Progreso a 0</button>
+                <div class="manual-add">
+                    <input type="number" id="manual-points" step="0.1" placeholder="Puntos a agregar">
+                    <button id="add-manual-points-btn" class="btn success">Agregar Puntos</button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
