@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
 from models import db, User, Progress, SystemConfig
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta 
 
 app = Flask(__name__)
 
@@ -89,13 +90,30 @@ def add_points():
         if not progress or not config:
             return jsonify({'error': 'Configuración no encontrada'}), 500
         
+        # VERIFICAR SI HA PASADO 20 HORAS
+        time_since_last_click = datetime.utcnow() - progress.last_click_time
+        twenty_hours = timedelta(hours=20)
+        
+        if time_since_last_click < twenty_hours:
+            hours_remaining = twenty_hours - time_since_last_click
+            hours = int(hours_remaining.total_seconds() // 3600)
+            minutes = int((hours_remaining.total_seconds() % 3600) // 60)
+            return jsonify({
+                'error': True,
+                'message': f'Debes esperar {hours}h {minutes}m para sumar puntos nuevamente'
+            }), 429
+        
+        # SUMAR PUNTOS Y ACTUALIZAR TIEMPO
         progress.current_points += config.points_per_click
+        progress.last_click_time = datetime.utcnow()  # ACTUALIZAR TIEMPO
+        
         if progress.current_points > config.max_points:
             progress.current_points = config.max_points
         
         db.session.commit()
         
         return jsonify({
+            'success': True,
             'current_points': progress.current_points,
             'max_points': config.max_points,
             'percentage': (progress.current_points / config.max_points) * 100
@@ -240,6 +258,37 @@ def get_progress():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/admin/subtract_manual_points', methods=['POST'])
+def subtract_manual_points():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        points_to_subtract = float(request.json.get('points'))
+        
+        progress = Progress.query.first()
+        config = SystemConfig.query.first()
+        
+        if not progress or not config:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
+        
+        # RESTAR PUNTOS
+        progress.current_points -= points_to_subtract
+        if progress.current_points < 0:
+            progress.current_points = 0
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'current_points': progress.current_points,
+            'percentage': (progress.current_points / config.max_points) * 100
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400  
 
 # Health check para Azure
 @app.route('/health')

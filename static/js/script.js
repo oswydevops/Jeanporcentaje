@@ -16,6 +16,12 @@ function initializeApp() {
     const resetProgressBtn = document.getElementById('reset-progress-btn');
     const addManualPointsBtn = document.getElementById('add-manual-points-btn');
     const manualPointsInput = document.getElementById('manual-points');
+    const subtractManualPointsBtn = document.getElementById('subtract-manual-points-btn');
+    const subtractPointsInput = document.getElementById('subtract-points');
+    
+    if (subtractManualPointsBtn && subtractPointsInput) {
+        subtractManualPointsBtn.addEventListener('click', subtractManualPoints);
+    }
 
     // Cargar progreso inicial
     loadProgress();
@@ -26,6 +32,18 @@ function initializeApp() {
     }
 
     // Event listeners para panel admin
+    if (configForm) {
+        configForm.addEventListener('submit', updateConfig);
+    }
+
+    if (resetProgressBtn) {
+        resetProgressBtn.addEventListener('click', resetProgress);
+    }
+
+    if (addManualPointsBtn && manualPointsInput) {
+        addManualPointsBtn.addEventListener('click', addManualPoints);
+    }
+
     if (configForm) {
         configForm.addEventListener('submit', updateConfig);
     }
@@ -54,6 +72,14 @@ async function loadProgress() {
 }
 
 function updateProgressDisplay(data) {
+    console.log("Actualizando display con datos:", data);
+    
+    // Validar que los datos existen
+    if (!data) {
+        console.error("Datos no definidos en updateProgressDisplay");
+        return;
+    }
+
     // Actualizar panel principal
     const progressFill = document.getElementById('progress-fill');
     const progressPercentage = document.getElementById('progress-percentage');
@@ -61,10 +87,19 @@ function updateProgressDisplay(data) {
     const maxPoints = document.getElementById('max-points');
     
     if (progressFill && progressPercentage && currentPoints && maxPoints) {
-        progressFill.style.width = `${data.percentage}%`;
-        progressPercentage.textContent = `${data.percentage.toFixed(1)}%`;
-        currentPoints.textContent = data.current_points.toFixed(1);
-        maxPoints.textContent = data.max_points.toFixed(1);
+        // Solo actualizar si los datos existen
+        if (data.percentage !== undefined) {
+            progressFill.style.width = `${data.percentage}%`;
+            progressPercentage.textContent = `${data.percentage.toFixed(1)}%`;
+        }
+        
+        if (data.current_points !== undefined) {
+            currentPoints.textContent = data.current_points.toFixed(1);
+        }
+        
+        if (data.max_points !== undefined) {
+            maxPoints.textContent = data.max_points.toFixed(1);
+        }
     }
 
     // Actualizar panel admin si existe
@@ -76,31 +111,32 @@ function updateProgressDisplay(data) {
     const statPointsPerClick = document.getElementById('stat-points-per-click');
     const statPercentage = document.getElementById('stat-percentage');
     
-    if (adminProgressFill) {
+    if (adminProgressFill && data.percentage !== undefined) {
         adminProgressFill.style.width = `${data.percentage}%`;
     }
-    if (adminCurrentPoints) {
+    if (adminCurrentPoints && data.current_points !== undefined) {
         adminCurrentPoints.textContent = data.current_points.toFixed(1);
     }
-    if (adminMaxPoints) {
+    if (adminMaxPoints && data.max_points !== undefined) {
         adminMaxPoints.textContent = data.max_points.toFixed(1);
     }
-    if (statCurrentPoints) {
+    if (statCurrentPoints && data.current_points !== undefined) {
         statCurrentPoints.textContent = data.current_points.toFixed(1);
     }
-    if (statMaxPoints) {
+    if (statMaxPoints && data.max_points !== undefined) {
         statMaxPoints.textContent = data.max_points.toFixed(1);
     }
-    if (statPointsPerClick) {
+    if (statPointsPerClick && data.points_per_click !== undefined) {
         statPointsPerClick.textContent = data.points_per_click.toFixed(1);
     }
-    if (statPercentage) {
+    if (statPercentage && data.percentage !== undefined) {
         statPercentage.textContent = `${data.percentage.toFixed(1)}%`;
     }
 }
 
 async function addPoints() {
     try {
+        console.log("Intentando sumar puntos...");
         const response = await fetch('/add_points', {
             method: 'POST',
             headers: {
@@ -108,7 +144,23 @@ async function addPoints() {
             }
         });
         
+        console.log("Respuesta recibida:", response.status);
         const data = await response.json();
+        console.log("Datos recibidos:", data);
+        
+        // MANEJO CORREGIDO DE ERRORES
+        if (!response.ok) {
+            console.log("Error en respuesta:", data);
+            if (data.message) {
+                showNotification(data.message, 'error');
+            } else {
+                showNotification('Debes esperar para sumar puntos nuevamente', 'error');
+            }
+            return; // IMPORTANTE: Salir de la función aquí
+        }
+        
+        // SI LLEGA AQUÍ, ES ÉXITO
+        console.log("Éxito - actualizando display");
         updateProgressDisplay(data);
         
         // Efecto visual
@@ -120,6 +172,7 @@ async function addPoints() {
         
     } catch (error) {
         console.error('Error adding points:', error);
+        showNotification('Error de conexión', 'error');
     }
 }
 
@@ -212,6 +265,39 @@ async function addManualPoints() {
     } catch (error) {
         console.error('Error adding manual points:', error);
         showNotification('Error al agregar puntos', 'error');
+    }
+}
+
+async function subtractManualPoints() {
+    const pointsInput = document.getElementById('subtract-points');
+    const points = parseFloat(pointsInput.value);
+    
+    if (isNaN(points) || points <= 0) {
+        showNotification('Por favor ingresa un número válido mayor a 0', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/subtract_manual_points', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ points: points })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(`Se restaron ${points} puntos correctamente`, 'success');
+            pointsInput.value = '';
+            updateProgressDisplay(result);
+        } else {
+            showNotification('Error al restar puntos', 'error');
+        }
+    } catch (error) {
+        console.error('Error subtracting manual points:', error);
+        showNotification('Error al restar puntos', 'error');
     }
 }
 

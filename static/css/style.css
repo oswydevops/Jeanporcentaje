@@ -409,3 +409,32 @@ body {
         padding: 20px;
     }
 }
+
+/* AGREGAR ESTO AL CSS */
+.manual-subtract {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn.warning {
+    background: #ff9800;
+    color: white;
+}
+
+.btn.warning:hover {
+    background: #f57c00;
+}
+
+.manual-subtract input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+}
+
+@media (max-width: 768px) {
+    .manual-subtract {
+        flex-direction: column;
+    }
+}
