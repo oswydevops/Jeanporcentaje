@@ -19,20 +19,20 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Puntos Actuales</h3>
-                    <div class="stat-value" id="stat-current-points">{{ progress.current_points }}</div>
+                    <div class="stat-value" id="stat-current-points">{{ "%.2f"|format(progress.current_points) }}</div>
                 </div>
                 <div class="stat-card">
                     <h3>Máximo de Puntos</h3>
-                    <div class="stat-value" id="stat-max-points">{{ config.max_points }}</div>
+                    <div class="stat-value" id="stat-max-points">{{ "%.2f"|format(config.max_points) }}</div>
                 </div>
                 <div class="stat-card">
                     <h3>Puntos por Clic</h3>
-                    <div class="stat-value" id="stat-points-per-click">{{ config.points_per_click }}</div>
+                    <div class="stat-value" id="stat-points-per-click">{{ "%.2f"|format(config.points_per_click) }}</div>
                 </div>
                 <div class="stat-card">
                     <h3>Progreso</h3>
                     <div class="stat-value" id="stat-percentage">
-                        {{ "%.1f"|format((progress.current_points / config.max_points) * 100) }}%
+                        {{ "%.2f"|format((progress.current_points / config.max_points) * 100) }}%
                     </div>
                 </div>
             </div>
@@ -46,9 +46,9 @@
                      style="width: {{ (progress.current_points / config.max_points) * 100 }}%"></div>
             </div>
             <div class="progress-numbers">
-                <span id="admin-current-points">{{ progress.current_points }}</span>
+                <span id="admin-current-points">{{ "%.2f"|format(progress.current_points) }}</span>
                 <span>/</span>
-                <span id="admin-max-points">{{ config.max_points }}</span>
+                <span id="admin-max-points">{{ "%.2f"|format(config.max_points) }}</span>
             </div>
         </section>
 
@@ -64,7 +64,7 @@
                 <div class="form-group">
                     <label for="points-per-click">Puntos por Clic:</label>
                     <input type="number" id="points-per-click" name="points_per_click" 
-                           step="0.1" min="0.1" value="{{ config.points_per_click }}" required>
+                           step="0.01" min="0.01" value="{{ config.points_per_click }}" required>
                 </div>
                 <button type="submit" class="btn primary">Guardar Configuración</button>
             </form>

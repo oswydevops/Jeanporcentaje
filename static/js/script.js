@@ -90,15 +90,15 @@ function updateProgressDisplay(data) {
         // Solo actualizar si los datos existen
         if (data.percentage !== undefined) {
             progressFill.style.width = `${data.percentage}%`;
-            progressPercentage.textContent = `${data.percentage.toFixed(1)}%`;
+            progressPercentage.textContent = `${data.percentage.toFixed(2)}%`;
         }
         
         if (data.current_points !== undefined) {
-            currentPoints.textContent = data.current_points.toFixed(1);
+            currentPoints.textContent = data.current_points.toFixed(2);
         }
         
         if (data.max_points !== undefined) {
-            maxPoints.textContent = data.max_points.toFixed(1);
+            maxPoints.textContent = data.max_points.toFixed(2);
         }
     }
 
@@ -115,22 +115,22 @@ function updateProgressDisplay(data) {
         adminProgressFill.style.width = `${data.percentage}%`;
     }
     if (adminCurrentPoints && data.current_points !== undefined) {
-        adminCurrentPoints.textContent = data.current_points.toFixed(1);
+        adminCurrentPoints.textContent = data.current_points.toFixed(2);
     }
     if (adminMaxPoints && data.max_points !== undefined) {
-        adminMaxPoints.textContent = data.max_points.toFixed(1);
+        adminMaxPoints.textContent = data.max_points.toFixed(2);
     }
     if (statCurrentPoints && data.current_points !== undefined) {
-        statCurrentPoints.textContent = data.current_points.toFixed(1);
+        statCurrentPoints.textContent = data.current_points.toFixed(2);
     }
     if (statMaxPoints && data.max_points !== undefined) {
-        statMaxPoints.textContent = data.max_points.toFixed(1);
+        statMaxPoints.textContent = data.max_points.toFixed(2);
     }
     if (statPointsPerClick && data.points_per_click !== undefined) {
-        statPointsPerClick.textContent = data.points_per_click.toFixed(1);
+        statPointsPerClick.textContent = data.points_per_click.toFixed(2);
     }
     if (statPercentage && data.percentage !== undefined) {
-        statPercentage.textContent = `${data.percentage.toFixed(1)}%`;
+        statPercentage.textContent = `${data.percentage.toFixed(2)}%`;
     }
 }
 
@@ -184,6 +184,12 @@ async function updateConfig(event) {
         max_points: parseFloat(formData.get('max_points')),
         points_per_click: parseFloat(formData.get('points_per_click'))
     };
+
+    // NUEVA VALIDACIÓN PARA PUNTOS POR CLIC
+    if (config.points_per_click < 0.01) {
+        showNotification('Los puntos por clic deben ser mayor o igual a 0.01', 'error');
+        return;
+    }
     
     try {
         const response = await fetch('/admin/update_config', {

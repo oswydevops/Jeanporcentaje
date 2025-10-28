@@ -11,9 +11,9 @@
     
     <div class="progress-section">
         <div class="progress-info">
-            <span id="current-points">{{ "%.1f"|format(progress.current_points) }}</span>
+            <span id="current-points">{{ "%.2f"|format(progress.current_points) }}</span>
             <span>de</span>
-            <span id="max-points">{{ "%.1f"|format(config.max_points) }}</span>
+            <span id="max-points">{{ "%.2f"|format(config.max_points) }}</span>
             <span>puntos</span>
         </div>
         
@@ -23,12 +23,12 @@
                      style="width: {{ (progress.current_points / config.max_points) * 100 }}%"></div>
             </div>
             <div class="progress-percentage" id="progress-percentage">
-                {{ "%.1f"|format((progress.current_points / config.max_points) * 100) }}%
+                {{ "%.2f"|format((progress.current_points / config.max_points) * 100) }}%
             </div>
         </div>
         
         <button id="add-points-btn" class="add-btn">
-            ¡Sumar Puntos! (+{{ "%.1f"|format(config.points_per_click) }})
+            ¡Sumar Puntos! (+{{ "%.2f"|format(config.points_per_click) }})
         </button>
     </div>
 </div>

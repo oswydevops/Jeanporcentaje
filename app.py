@@ -165,6 +165,10 @@ def update_config():
     try:
         max_points = float(request.json.get('max_points'))
         points_per_click = float(request.json.get('points_per_click'))
+
+        # NUEVA VALIDACIÓN BACKEND
+        if points_per_click < 0.01:
+            return jsonify({'error': 'Los puntos por clic deben ser mayor o igual a 0.01'}), 400
         
         config = SystemConfig.query.first()
         progress = Progress.query.first()
