@@ -1,17 +1,102 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ current_language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Barra de Puntos de Jean{% endblock %}</title>
+    <title>{% block title %}Les progrès de Jean{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    <style>
+    /* Selector de idioma - Completamente centrado */
+    .language-selector {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: whitesmoke;
+        padding: 10px 20px;
+        border-radius: 12px;
+     /* box-shadow: 0 4px 20px rgba(0,0,0,0.15);*/
+     /* border: 1px solid #e0e0e0; */
+        backdrop-filter: blur(10px);
+    }
+    
+    .language-buttons {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .lang-btn {
+        background: linear-gradient(135deg, hsl(210, 84%, 52%) 100%, #764ba2 0%);
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        min-width: 50px;
+        color: white;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+    }
+    
+    .lang-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .lang-btn.active {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        transform: translateY(-2px);
+    }
+</style>
 </head>
 <body>
+    <!-- === INICIO MODIFICACIÓN SELECTOR DE IDIOMA === -->
+    <!-- Selector de idioma fijo a la izquierda y más pequeño -->
+    {% if request.endpoint == 'index' %}
+    <div class="language-selector">
+    <div class="language-buttons">
+        <button class="lang-btn {% if current_language == 'es' %}active{% endif %}" 
+                onclick="changeLanguage('es')"
+                title="Español">
+            🇪🇸
+        </button>
+        <button class="lang-btn {% if current_language == 'fr' %}active{% endif %}" 
+                onclick="changeLanguage('fr')"
+                title="Français">
+            🇫🇷
+        </button>
+    </div>
+</div>
+{% endif %}
+    <!-- === FIN MODIFICACIÓN SELECTOR DE IDIOMA === -->
+
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+    
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+    // === INICIO MODIFICACIÓN FUNCIÓN CAMBIO IDIOMA ===
+    function changeLanguage(language) {
+        fetch(`/set_language/${language}`)
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error cambiando idioma:', error);
+                location.reload(); // Recargar de todas formas
+            });
+    }
+    // === FIN MODIFICACIÓN FUNCIÓN CAMBIO IDIOMA ===
+    </script>
 </body>
 </html>

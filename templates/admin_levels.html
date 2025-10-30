@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Niveles - PorcentApp</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="admin-panel">
+            <header>
+                <h1>🎯 Gestión de Niveles</h1>
+                <div class="admin-actions">
+                    <a href="{{ url_for('admin_panel') }}" class="btn secondary">← Volver al Panel</a>
+                    <a href="{{ url_for('admin_logout') }}" class="btn logout">Cerrar Sesión</a>
+                </div>
+            </header>
+
+            <!-- Mensajes de error -->
+            {% if error %}
+            <div class="error-message" style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffcdd2;">
+                <strong>❌ Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Mensajes de éxito -->
+            {% if success %}
+            <div class="success-message" style="background: #e8f5e8; color: #2e7d32; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c8e6c9;">
+                <strong>✅ Éxito:</strong> {{ success }}
+            </div>
+            {% endif %}
+
+            <div class="admin-content">
+                <!-- Formulario para crear nuevo nivel -->
+                <section class="config-section">
+                    <h2>Crear Nuevo Nivel</h2>
+                    <form method="POST" class="config-form">
+                        <div class="form-group">
+                            <label for="level_number">Número de Nivel:</label>
+                            <input type="number" id="level_number" name="level_number" min="1" required 
+                                   placeholder="Ej: 1, 2, 3...">
+                            <small style="color: #666; font-size: 12px;">Debe ser único. Niveles existentes: 
+                                {% if levels %}
+                                    {% for level in levels %}{{ level.level_number }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% else %}
+                                    Ninguno
+                                {% endif %}
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="percentage_required">Porcentaje Requerido:</label>
+                            <input type="number" id="percentage_required" name="percentage_required" 
+                                   min="0" max="100" step="0.1" required placeholder="Ej: 25.5, 50.0, 75.0">
+                            <small style="color: #666; font-size: 12px;">Porcentaje del total necesario para desbloquear este nivel</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="name">Nombre del Nivel:</label>
+                            <input type="text" id="name" name="name" required placeholder="Ej: Principiante, Intermedio, Avanzado">
+                            <small style="color: #666; font-size: 12px;">Nombres existentes: 
+                                {% if levels %}
+                                    {% for level in levels %}"{{ level.name }}"{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% else %}
+                                    Ninguno
+                                {% endif %}
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="color">Color del Nivel:</label>
+                            <input type="color" id="color" name="color" value="#4CAF50" required>
+                            <small style="color: #666; font-size: 12px;">Color que se mostrará en la tarjeta del nivel</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Mensaje de Logro:</label>
+                            <textarea id="message" name="message" rows="3" required 
+                                      placeholder="Mensaje que se mostrará cuando se desbloquee este nivel"></textarea> 
+                            <small style="color: #666; font-size: 12px;">Este mensaje aparecerá cuando el usuario alcance el nivel</small>
+                        </div>
+                        
+                        <button type="submit" class="btn primary">Crear Nivel</button>
+                    </form>
+                </section>
+                
+                <!-- Lista de niveles existentes -->
+                <section class="config-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2>Niveles Existentes</h2>
+                        {% if levels %}
+                        <span class="levels-count" style="background: #4CAF50; color: white; padding: 5px 12px; border-radius: 15px; font-size: 14px; font-weight: bold;">
+                            {{ levels|length }} nivel{{ 'es' if levels|length != 1 else '' }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="levels-list" style="max-height: 500px; overflow-y: auto; padding-right: 10px;">
+                        {% if levels %}
+                            {% for level in levels %}
+                            <div class="level-card" style="margin-bottom: 15px; border-left: 4px solid {{ level.color }}; position: relative;">
+                                <div class="level-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span class="level-name" style="font-size: 1.2em; font-weight: bold; color: {{ level.color }};">{{ level.name }}</span>
+                                    <span class="level-number" style="background: {{ level.color }}; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">
+                                        Nivel {{ level.level_number }}
+                                    </span>
+                                </div>
+                                <div class="level-details" style="color: #666; font-size: 14px;">
+                                    <p style="margin: 5px 0;"><strong>Porcentaje requerido:</strong> {{ level.percentage_required }}%</p>
+                                    <p style="margin: 5px 0; display: flex; align-items: center; gap: 8px;">
+                                        <strong>Color:</strong> 
+                                        {{ level.color }}
+                                        <span style="display: inline-block; width: 16px; height: 16px; border-radius: 3px; border: 1px solid #ddd; background: {{ level.color }};"></span>
+                                    </p>
+                                </div>
+                                <!-- Botón de eliminar -->
+                                <div style="margin-top: 15px; text-align: right;">
+                                    <form method="POST" action="{{ url_for('delete_level', level_id=level.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn danger" 
+                                                onclick="return confirm('¿Estás seguro de que quieres eliminar el nivel \"{{ level.name }}\"?\\n\\nNivel: {{ level.name }}\\nNúmero: {{ level.level_number }}\\nPorcentaje: {{ level.percentage_required }}%\\n\\n⚠️ Esta acción no se puede deshacer.')"
+                                                style="padding: 6px 12px; font-size: 12px;">
+                                            🗑️ Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div style="text-align: center; padding: 40px 20px; color: #666;">
+                                <p style="font-size: 1.1em; font-weight: 600; margin-bottom: 8px; color: #333;">🎯 No hay niveles configurados</p>
+                                <p>Crea tu primer nivel usando el formulario</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Confirmación para eliminar niveles
+    function confirmDelete(levelName, levelNumber, percentage) {
+        return confirm(`¿Estás seguro de que quieres eliminar el nivel "${levelName}"?\n\nNivel: ${levelName}\nNúmero: ${levelNumber}\nPorcentaje: ${percentage}%\n\n⚠️ Esta acción no se puede deshacer.`);
+    }
+
+    // Validación del formulario antes de enviar
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                const levelNumber = document.getElementById('level_number').value;
+                const percentage = document.getElementById('percentage_required').value;
+                const name = document.getElementById('name').value;
+                
+                // Validaciones básicas
+                if (percentage < 0 || percentage > 100) {
+                    alert('El porcentaje debe estar entre 0 y 100');
+                    event.preventDefault();
+                    return;
+                }
+                
+                if (levelNumber < 1) {
+                    alert('El número de nivel debe ser mayor a 0');
+                    event.preventDefault();
+                    return;
+                }
+                
+                if (name.trim().length < 2) {
+                    alert('El nombre del nivel debe tener al menos 2 caracteres');
+                    event.preventDefault();
+                    return;
+                }
+            });
+        }
+
+        // Mostrar información de niveles existentes al cargar
+        console.log('Niveles existentes:', {
+            {% if levels %}
+                {% for level in levels %}
+                'nivel{{ level.level_number }}': '{{ level.name }} ({{ level.percentage_required }}%)'{% if not loop.last %},{% endif %}
+                {% endfor %}
+            {% else %}
+                'info': 'No hay niveles configurados'
+            {% endif %}
+        });
+    });
+
+    // Prevenir envío doble del formulario
+    let formSubmitted = false;
+    document.querySelector('form')?.addEventListener('submit', function() {
+        if (formSubmitted) {
+            event.preventDefault();
+            return;
+        }
+        formSubmitted = true;
+        this.querySelector('button[type="submit"]').disabled = true;
+        this.querySelector('button[type="submit"]').textContent = 'Creando...';
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+msgid "Admin Panel"
+msgstr "Panel de Administración"
+
+msgid "Add Points"
+msgstr "Sumar Puntos"
+
+msgid "Current Points"
+msgstr "Puntos Actuales"
+
+msgid "Max Points"
+msgstr "Puntos Máximos"
+
+msgid "Progress"
+msgstr "Progreso"
+
+msgid "Levels"
+msgstr "Niveles"
+
+msgid "Achievements"
+msgstr "Logros"
+
+msgid "Configuration"
+msgstr "Configuración"
+
+msgid "Login"
+msgstr "Iniciar Sesión"
+
+msgid "Logout"
+msgstr "Cerrar Sesión"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Reset"
+msgstr "Reiniciar"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Success"
+msgstr "Éxito"
+
+msgid "Please enter a valid number greater than 0"
+msgstr "Por favor ingresa un número válido mayor a 0"
+
+msgid "Points added successfully"
+msgstr "Puntos agregados correctamente"
+
+msgid "Error adding points"
+msgstr "Error al agregar puntos"

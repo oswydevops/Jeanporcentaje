@@ -1,10 +1,22 @@
 import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
-from models import db, User, Progress, SystemConfig
+from models import db, User, Progress, SystemConfig, Level, Achievement
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta 
 
 app = Flask(__name__)
+
+# === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+# Configuración de idiomas
+LANGUAGES = {
+    'es': 'Español',
+    'fr': 'Français'
+}
+
+def get_current_language():
+    """Determina el idioma preferido del usuario"""
+    return session.get('language', 'es')
+# === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
 
 # Configuración para producción
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -67,6 +79,16 @@ def setup_database():
         initialize_database()
         app.database_initialized = True
 
+# === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+@app.route('/set_language/<language>')
+def set_language(language):
+    """Cambia el idioma de la aplicación"""
+    if language in LANGUAGES:
+        session['language'] = language
+    # Redirigir a la página anterior o al inicio
+    return redirect(request.referrer or url_for('index'))
+# === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+
 # Ruta para archivos estáticos
 @app.route('/static/<path:filename>')
 def static_files(filename):
@@ -77,7 +99,9 @@ def index():
     progress = Progress.query.first()
     config = SystemConfig.query.first()
     if progress and config:
-        return render_template('index.html', progress=progress, config=config)
+        # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+        return render_template('index.html', progress=progress, config=config, current_language=get_current_language())
+        # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
     else:
         return "Error: Base de datos no inicializada", 500
 
@@ -90,25 +114,20 @@ def add_points():
         if not progress or not config:
             return jsonify({'error': 'Configuración no encontrada'}), 500
         
-        # VERIFICAR SI HA PASADO 20 HORAS
-        time_since_last_click = datetime.utcnow() - progress.last_click_time
-        twenty_hours = timedelta(hours=20)
-        
-        if time_since_last_click < twenty_hours:
-            hours_remaining = twenty_hours - time_since_last_click
-            hours = int(hours_remaining.total_seconds() // 3600)
-            minutes = int((hours_remaining.total_seconds() % 3600) // 60)
-            return jsonify({
-                'error': True,
-                'message': f'Debes esperar {hours}h {minutes}m para sumar puntos nuevamente'
-            }), 429
-        
-        # SUMAR PUNTOS Y ACTUALIZAR TIEMPO
+        # SUMAR PUNTOS
         progress.current_points += config.points_per_click
-        progress.last_click_time = datetime.utcnow()  # ACTUALIZAR TIEMPO
+        
+        # Actualizar el tiempo del último clic
+        progress.last_click_time = datetime.utcnow()
         
         if progress.current_points > config.max_points:
             progress.current_points = config.max_points
+        
+        # CALCULAR PORCENTAJE ACTUAL
+        current_percentage = (progress.current_points / config.max_points) * 100
+        
+        # VERIFICAR Y CREAR LOGROS
+        check_achievements(current_percentage)
         
         db.session.commit()
         
@@ -116,7 +135,7 @@ def add_points():
             'success': True,
             'current_points': progress.current_points,
             'max_points': config.max_points,
-            'percentage': (progress.current_points / config.max_points) * 100
+            'percentage': current_percentage
         })
     
     except Exception as e:
@@ -135,9 +154,13 @@ def admin_login():
             session['admin_logged_in'] = True
             return redirect(url_for('admin_panel'))
         else:
-            return render_template('admin_login.html', error='Credenciales inválidas')
+            # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+            return render_template('admin_login.html', error='Credenciales inválidas', current_language=get_current_language())
+            # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
     
-    return render_template('admin_login.html')
+    # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+    return render_template('admin_login.html', current_language=get_current_language())
+    # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -153,7 +176,9 @@ def admin_panel():
     config = SystemConfig.query.first()
     
     if progress and config:
-        return render_template('admin_panel.html', progress=progress, config=config)
+        # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+        return render_template('admin_panel.html', progress=progress, config=config, current_language=get_current_language())
+        # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
     else:
         return "Error: Base de datos no inicializada", 500
 
@@ -232,12 +257,16 @@ def add_manual_points():
         elif progress.current_points < 0:
             progress.current_points = 0
         
+        # CALCULAR PORCENTAJE Y VERIFICAR LOGROS
+        current_percentage = (progress.current_points / config.max_points) * 100
+        check_achievements(current_percentage)
+        
         db.session.commit()
         
         return jsonify({
             'success': True,
             'current_points': progress.current_points,
-            'percentage': (progress.current_points / config.max_points) * 100
+            'percentage': current_percentage
         })
     
     except Exception as e:
@@ -292,7 +321,152 @@ def subtract_manual_points():
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 400  
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/api/levels')
+def get_levels():
+    levels = Level.query.order_by(Level.percentage_required).all()
+    achievements = Achievement.query.all()
+    
+    return jsonify({
+        'levels': [{
+            'id': level.id,
+            'level_number': level.level_number,
+            'percentage_required': level.percentage_required,
+            'name': level.name,
+            'color': level.color
+        } for level in levels],
+        'achievements': [{
+            'id': achievement.id,
+            'level_id': achievement.level_id,
+            'message': achievement.message,
+            'is_opened': achievement.is_opened,
+            'unlocked_at': achievement.unlocked_at.isoformat() if achievement.unlocked_at else None
+        } for achievement in achievements]
+    })
+
+@app.route('/api/achievements/<int:achievement_id>/open', methods=['POST'])
+def open_achievement(achievement_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    achievement = Achievement.query.get_or_404(achievement_id)
+    achievement.is_opened = True
+    achievement.unlocked_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+#Ruta para eliminar levels
+@app.route('/admin/levels/delete/<int:level_id>', methods=['POST'])
+def delete_level(level_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        level = Level.query.get_or_404(level_id)
+        
+        # Eliminar también el achievement asociado
+        achievement = Achievement.query.filter_by(level_id=level_id).first()
+        if achievement:
+            db.session.delete(achievement)
+        
+        db.session.delete(level)
+        db.session.commit()
+        
+        return redirect(url_for('manage_levels'))
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/levels', methods=['GET', 'POST'])
+def manage_levels():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        try:
+            # Crear nuevo nivel
+            level_number = int(request.form.get('level_number'))
+            percentage_required = float(request.form.get('percentage_required'))
+            name = request.form.get('name')
+            color = request.form.get('color')
+            message = request.form.get('message')
+            
+            # VERIFICAR SI EL NÚMERO DE NIVEL YA EXISTE
+            existing_level = Level.query.filter_by(level_number=level_number).first()
+            if existing_level:
+                levels = Level.query.order_by(Level.percentage_required).all()
+                # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+                return render_template('admin_levels.html', 
+                                    levels=levels, 
+                                    error=f'El nivel número {level_number} ya existe. Usa un número diferente.',
+                                    current_language=get_current_language())
+                # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+            
+            # VERIFICAR SI EL NOMBRE DE NIVEL YA EXISTE
+            existing_name = Level.query.filter_by(name=name).first()
+            if existing_name:
+                levels = Level.query.order_by(Level.percentage_required).all()
+                # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+                return render_template('admin_levels.html', 
+                                    levels=levels, 
+                                    error=f'El nombre de nivel "{name}" ya existe. Usa un nombre diferente.',
+                                    current_language=get_current_language())
+                # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+            
+            new_level = Level(
+                level_number=level_number,
+                percentage_required=percentage_required,
+                name=name,
+                color=color
+            )
+            db.session.add(new_level)
+            db.session.commit()
+            
+            # Crear achievement para este nivel
+            new_achievement = Achievement(
+                level_id=new_level.id,
+                message=message
+            )
+            db.session.add(new_achievement)
+            db.session.commit()
+            
+            return redirect(url_for('manage_levels'))
+            
+        except Exception as e:
+            db.session.rollback()
+            levels = Level.query.order_by(Level.percentage_required).all()
+            # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+            return render_template('admin_levels.html', 
+                                levels=levels, 
+                                error=f'Error al crear el nivel: {str(e)}',
+                                current_language=get_current_language())
+            # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+    
+    levels = Level.query.order_by(Level.percentage_required).all()
+    # === INICIO MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+    return render_template('admin_levels.html', levels=levels, current_language=get_current_language())
+    # === FIN MODIFICACIÓN SISTEMA DE TRADUCCIÓN SIMPLIFICADO ===
+
+# Función para verificar y crear logros automáticamente
+def check_achievements(current_percentage):
+    levels = Level.query.filter(Level.percentage_required <= current_percentage).all()
+    
+    for level in levels:
+        # Verificar si ya existe un achievement para este nivel
+        existing_achievement = Achievement.query.filter_by(level_id=level.id).first()
+        if not existing_achievement:
+            # Crear achievement automáticamente SOLO si se alcanzó el porcentaje
+            new_achievement = Achievement(
+                level_id=level.id,
+                message=f"¡Felicidades! Alcanzaste el nivel {level.name}. Contacta a tu administrador para reclamar tu recompensa."
+            )
+            db.session.add(new_achievement)
+    
+    db.session.commit()
 
 # Health check para Azure
 @app.route('/health')

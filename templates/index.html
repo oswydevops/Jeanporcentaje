@@ -1,20 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Barra de Progreso de Jean{% endblock %}
+{% block title %}Les progrès de Jean{% endblock %}
 
 {% block content %}
 <div class="main-panel">
     <header>
-        <h1>Barra de Puntos de Jean</h1>
-        <a href="{{ url_for('admin_login') }}" class="admin-btn">Admin</a>
+        <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        <h1 id="main-title">Les progrès de Jean</h1>
+        <a href="{{ url_for('admin_login') }}" class="admin-btn" id="admin-btn">Admin</a>
+        <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
     </header>
     
     <div class="progress-section">
+        <!-- FOTO DE PERFIL AGREGADA AQUÍ - ENCIMA DEL PORCENTAJE -->
+        <div class="profile-photo-container">
+            <img src="{{ url_for('static', filename='images/jean-profile.jpg') }}" 
+                 alt="Foto de Jean" 
+                 class="profile-photo"
+                 id="profile-photo">
+        </div>
+        
         <div class="progress-info">
-            <span id="current-points">{{ "%.2f"|format(progress.current_points) }}</span>
-            <span>de</span>
-            <span id="max-points">{{ "%.2f"|format(config.max_points) }}</span>
-            <span>puntos</span>
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <span id="current-points-value">{{ "%.2f"|format(progress.current_points) }}</span>
+            <span id="points-separator">de</span>
+            <span id="max-points-value">{{ "%.2f"|format(config.max_points) }}</span>
+            <span id="points-text">points</span>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
         </div>
         
         <div class="progress-bar-container">
@@ -27,9 +39,84 @@
             </div>
         </div>
         
+        <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
         <button id="add-points-btn" class="add-btn">
-            ¡Sumar Puntos! (+{{ "%.2f"|format(config.points_per_click) }})
+            <span id="add-points-text">¡Sumar Puntos!</span> 
+            <span id="points-per-click">(+{{ "%.2f"|format(config.points_per_click) }})</span>
         </button>
+        <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
     </div>
+
+    <!-- === INICIO MODIFICACIÓN SISTEMA NIVELES Y LOGROS === -->
+    <!-- Sección para mostrar niveles y baúles de recompensas -->
+    <section class="levels-section">
+        <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        <h2 id="levels-title">🎯 Niveles y Recompensas</h2>
+        <p class="levels-description" id="levels-description">
+            Atteignez des pourcentages spécifiques pour débloquer des récompenses spéciales
+        </p>
+        <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        
+        <div class="levels-container" id="levels-container">
+            <!-- Los niveles se cargarán dinámicamente con JavaScript -->
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <div class="loading-levels" id="loading-levels">Cargando niveles...</div>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        </div>
+    </section>
+
+    <!-- Modal para mostrar cuando se abre un baúl -->
+    <div id="achievement-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            
+            <div class="celebration-header">
+                <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                <h2 id="celebration-title">🎉 ¡Felicidades! 🎉</h2>
+                <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            </div>
+            
+            <div class="chest-animation">
+                <div class="chest" id="chest">
+                    <div class="chest-top"></div>
+                    <div class="chest-bottom"></div>
+                    <div class="chest-lock">🔒</div>
+                </div>
+            </div>
+            
+            <div class="achievement-message">
+                <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                <h3 id="achievement-title">Logro Desbloqueado</h3>
+                <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                <div class="message-container">
+                    <p id="achievement-text" class="achievement-text"></p>
+                </div>
+                <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                <button class="btn primary close-message-btn" id="close-message-btn">¡Entendido!</button>
+                <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            </div>
+        </div>
+    </div>
+    <!-- === FIN MODIFICACIÓN SISTEMA NIVELES Y LOGROS === -->
+    
 </div>
+
+<style>
+/* === ESTILOS PARA FOTO DE PERFIL DENTRO DEL CONTENEDOR === */
+.profile-photo-container {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #667eea;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    margin: 0 auto 20px auto; /* Centrado y espacio debajo */
+}
+
+.profile-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+</style>
 {% endblock %}

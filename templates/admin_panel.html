@@ -5,32 +5,44 @@
 {% block content %}
 <div class="admin-panel">
     <header>
-        <h1>Panel de Administración</h1>
+        <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        <h1 id="admin-panel-title">Panel de Administración</h1>
         <div class="admin-actions">
-            <a href="{{ url_for('index') }}" class="btn secondary">Ver Panel Principal</a>
-            <a href="{{ url_for('admin_logout') }}" class="btn logout">Cerrar Sesión</a>
+            <a href="{{ url_for('index') }}" class="btn secondary" id="view-main-panel-btn">Ver Panel Principal</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn logout" id="logout-btn">Cerrar Sesión</a>
         </div>
+        <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
     </header>
 
     <div class="admin-content">
         <!-- Estadísticas -->
         <section class="stats-section">
-            <h2>Estadísticas</h2>
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <h2 id="stats-title">Estadísticas</h2>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>Puntos Actuales</h3>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <h3 id="current-points-label">Puntos Actuales</h3>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <div class="stat-value" id="stat-current-points">{{ "%.2f"|format(progress.current_points) }}</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Máximo de Puntos</h3>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <h3 id="max-points-label">Máximo de Puntos</h3>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <div class="stat-value" id="stat-max-points">{{ "%.2f"|format(config.max_points) }}</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Puntos por Clic</h3>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <h3 id="points-per-click-label">Puntos por Clic</h3>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <div class="stat-value" id="stat-points-per-click">{{ "%.2f"|format(config.points_per_click) }}</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Progreso</h3>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <h3 id="progress-label">Progreso</h3>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <div class="stat-value" id="stat-percentage">
                         {{ "%.2f"|format((progress.current_points / config.max_points) * 100) }}%
                     </div>
@@ -40,7 +52,9 @@
 
         <!-- Visualización del Progreso -->
         <section class="progress-visualization">
-            <h2>Visualización del Progreso</h2>
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <h2 id="progress-visualization-title">Visualización del Progreso</h2>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
             <div class="progress-bar-large">
                 <div class="progress-fill-large" id="admin-progress-fill" 
                      style="width: {{ (progress.current_points / config.max_points) * 100 }}%"></div>
@@ -52,36 +66,69 @@
             </div>
         </section>
 
+        <!-- === INICIO MODIFICACIÓN: SECCIÓN GESTIÓN DE NIVELES === -->
+        <!-- Gestión de Niveles -->
+        <section class="levels-section">
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <h2 id="levels-management-title">Gestión de Niveles y Logros</h2>
+            <div class="levels-description">
+                <p id="levels-description-text">Configura los niveles del sistema y los mensajes de logros que se mostrarán al alcanzar cada porcentaje.</p>
+            </div>
+            <div class="levels-actions">
+                <a href="{{ url_for('manage_levels') }}" class="btn primary" id="manage-levels-btn">
+                    🎯 Gestionar Niveles
+                </a>
+            </div>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+        </section>
+        <!-- === FIN MODIFICACIÓN: SECCIÓN GESTIÓN DE NIVELES === -->
+
         <!-- Configuración del Sistema -->
         <section class="config-section">
-            <h2>Configuración del Sistema</h2>
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <h2 id="system-config-title">Configuración del Sistema</h2>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
             <form id="config-form" class="config-form">
                 <div class="form-group">
-                    <label for="max-points">Máximo de Puntos:</label>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <label for="max-points" id="max-points-input-label">Máximo de Puntos:</label>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <input type="number" id="max-points" name="max_points" 
                            step="0.1" min="0.1" value="{{ config.max_points }}" required>
                 </div>
                 <div class="form-group">
-                    <label for="points-per-click">Puntos por Clic:</label>
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                    <label for="points-per-click" id="points-per-click-label">Puntos por Clic:</label>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <input type="number" id="points-per-click" name="points_per_click" 
                            step="0.01" min="0.01" value="{{ config.points_per_click }}" required>
                 </div>
-                <button type="submit" class="btn primary">Guardar Configuración</button>
+                <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+                <button type="submit" class="btn primary" id="save-config-btn">Guardar Configuración</button>
+                <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
             </form>
         </section>
 
         <!-- Acciones Rápidas -->
         <section class="quick-actions">
-            <h2>Acciones Rápidas</h2>
+            <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
+            <h2 id="quick-actions-title">Acciones Rápidas</h2>
+            <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
             <div class="actions-grid">
+                <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                 <button id="reset-progress-btn" class="btn danger">Reiniciar Progreso a 0</button>
+                <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                 <div class="manual-add">
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <input type="number" id="manual-points" step="0.1" placeholder="Puntos a agregar">
                     <button id="add-manual-points-btn" class="btn success">Agregar Puntos</button>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                 </div>
                 <div class="manual-subtract">
+                    <!-- === INICIO MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                     <input type="number" id="subtract-points" step="0.1" placeholder="Puntos a restar">
                     <button id="subtract-manual-points-btn" class="btn warning">Restar Puntos</button>
+                    <!-- === FIN MODIFICACIÓN TRADUCCIÓN - AGREGAR IDs === -->
                 </div>
             </div>
         </section>
