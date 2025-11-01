@@ -261,9 +261,119 @@ function initializeApp() {
     setupAchievementModal();
     // === FIN MODIFICACIÓN SISTEMA NIVELES Y LOGROS ===
 
+    // ✅ NUEVO: Verificar límite de clicks al cargar
+    checkClickLimitOnLoad();
+
     // Actualizar progreso cada 5 segundos
     setInterval(loadProgress, 5000);
 }
+
+// === INICIO SISTEMA LÍMITE 12 HORAS ===
+/**
+ * Verifica el límite de clicks al cargar la página
+ */
+function checkClickLimitOnLoad() {
+    updateNextAvailableDisplay();
+    
+    // Verificar con el servidor el estado actual
+    fetch('/api/click_limit_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.next_available) {
+                updateNextAvailableTime(data.next_available);
+            }
+        })
+        .catch(error => console.error('Error checking click limit:', error));
+}
+
+/**
+ * Actualiza la visualización del próximo horario disponible
+ */
+function updateNextAvailableTime(nextAvailable) {
+    const nextTime = new Date(nextAvailable);
+    const now = new Date();
+    const timeDiff = nextTime - now;
+    
+    if (timeDiff > 0) {
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('nextAvailableTime', nextAvailable);
+        
+        // Actualizar interfaz si existe el elemento
+        const nextTimeElem = document.getElementById('next-available-time');
+        const addPointsBtn = document.getElementById('add-points-btn');
+        
+        if (nextTimeElem) {
+            nextTimeElem.textContent = `Próximo click en: ${hours}h ${minutes}m`;
+            nextTimeElem.style.display = 'block';
+        }
+        
+        if (addPointsBtn) {
+            addPointsBtn.disabled = true;
+            addPointsBtn.style.opacity = '0.6';
+            addPointsBtn.style.cursor = 'not-allowed';
+        }
+        
+        // Programar actualización automática cada minuto
+        setTimeout(updateNextAvailableDisplay, 60000);
+    }
+}
+
+/**
+ * Muestra el tiempo restante en la interfaz
+ */
+function updateNextAvailableDisplay() {
+    const storedTime = localStorage.getItem('nextAvailableTime');
+    if (!storedTime) {
+        // Si no hay tiempo almacenado, habilitar el botón
+        const addPointsBtn = document.getElementById('add-points-btn');
+        const nextTimeElem = document.getElementById('next-available-time');
+        
+        if (addPointsBtn) {
+            addPointsBtn.disabled = false;
+            addPointsBtn.style.opacity = '1';
+            addPointsBtn.style.cursor = 'pointer';
+        }
+        if (nextTimeElem) {
+            nextTimeElem.style.display = 'none';
+        }
+        return;
+    }
+    
+    const nextTime = new Date(storedTime);
+    const now = new Date();
+    const timeDiff = nextTime - now;
+    
+    if (timeDiff > 0) {
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        const nextTimeElem = document.getElementById('next-available-time');
+        if (nextTimeElem) {
+            nextTimeElem.textContent = `Próximo click en: ${hours}h ${minutes}m`;
+        }
+        
+        // Continuar actualizando
+        setTimeout(updateNextAvailableDisplay, 60000);
+    } else {
+        // Tiempo cumplido, limpiar y habilitar botón
+        localStorage.removeItem('nextAvailableTime');
+        const nextTimeElem = document.getElementById('next-available-time');
+        const addPointsBtn = document.getElementById('add-points-btn');
+        
+        if (nextTimeElem) {
+            nextTimeElem.style.display = 'none';
+        }
+        if (addPointsBtn) {
+            addPointsBtn.disabled = false;
+            addPointsBtn.style.opacity = '1';
+            addPointsBtn.style.cursor = 'pointer';
+        }
+    }
+}
+// === FIN SISTEMA LÍMITE 12 HORAS ===
 
 // === INICIO MODIFICACIÓN SISTEMA NIVELES Y LOGROS ===
 // Funciones para gestionar el sistema de niveles y logros
@@ -641,10 +751,10 @@ function updateProgressDisplay(data) {
     }
 }
 
-// === INICIO CORRECCIÓN FUNCIÓN ADD POINTS ===
+// === INICIO FUNCIÓN ADD POINTS CON LÍMITE 12 HORAS ===
 async function addPoints() {
     try {
-        console.log("Sumando puntos...");
+        console.log("Verificando límite de puntos...");
         const response = await fetch('/add_points', {
             method: 'POST',
             headers: {
@@ -653,20 +763,31 @@ async function addPoints() {
         });
         
         const data = await response.json();
-        console.log("Datos del servidor:", data);
+        console.log("Respuesta del servidor:", data);
         
-        if (!response.ok) {
-            showNotification(data.message || getTranslation('Error adding points'), 'error');
+        if (!response.ok || !data.success) {
+            // ✅ MANEJAR LÍMITE DE 12 HORAS
+            if (data.message && data.message.includes('esperar')) {
+                showNotification(data.message, 'warning');
+                if (data.next_available) {
+                    updateNextAvailableTime(data.next_available);
+                }
+            } else {
+                showNotification(data.message || getTranslation('Error adding points'), 'error');
+            }
             return;
         }
         
-        // ✅ ACTUALIZAR INTERFAZ CON DATOS DEL SERVIDOR
+        // ✅ ÉXITO - ACTUALIZAR INTERFAZ
         updateProgressDisplay(data);
-        
-        // Actualizar niveles por si se desbloquea alguno
         loadLevels();
         
-        // Efecto visual en el botón
+        // Mostrar próximo horario disponible
+        if (data.next_available) {
+            updateNextAvailableTime(data.next_available);
+        }
+        
+        // Efecto visual
         const button = document.getElementById('add-points-btn');
         button.style.transform = 'scale(0.95)';
         setTimeout(() => {
@@ -680,7 +801,7 @@ async function addPoints() {
         showNotification(getTranslation('Connection error'), 'error');
     }
 }
-// === FIN CORRECCIÓN FUNCIÓN ADD POINTS ===
+// === FIN FUNCIÓN ADD POINTS CON LÍMITE 12 HORAS ===
 
 async function updateConfig(event) {
     event.preventDefault();

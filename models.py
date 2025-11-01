@@ -15,7 +15,7 @@ class Progress(db.Model):
     max_points = db.Column(db.Float, default=100.0)
     points_per_click = db.Column(db.Float, default=1.0)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_click_time = db.Column(db.DateTime, default=datetime.utcnow)
+    last_click_time = db.Column(db.DateTime, default=datetime.utcnow)  # ✅ YA EXISTE - Perfecto!
 
 class SystemConfig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -38,4 +38,4 @@ class Achievement(db.Model):
     message = db.Column(db.String(500), nullable=False)  # Mensaje del baúl
     is_opened = db.Column(db.Boolean, default=False)  # Si ya se abrió el baúl
     unlocked_at = db.Column(db.DateTime)  # Cuándo se desbloqueó
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)   
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

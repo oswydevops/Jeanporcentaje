@@ -61,7 +61,8 @@ def initialize_database():
                 progress = Progress(
                     current_points=0.0,
                     max_points=DEFAULT_CONFIG['max_points'],
-                    points_per_click=DEFAULT_CONFIG['points_per_click']
+                    points_per_click=DEFAULT_CONFIG['points_per_click'],
+                    last_click_time=datetime.utcnow() - timedelta(hours=13)  # ← NUEVO: Inicializar tiempo
                 )
                 db.session.add(progress)
             
@@ -114,11 +115,35 @@ def add_points():
         if not progress or not config:
             return jsonify({'error': 'Configuración no encontrada'}), 500
         
-        # SUMAR PUNTOS
+        # ✅ CORRECCIÓN: USAR SOLO HORA DEL SERVIDOR CON DEBUG
+        current_server_time = datetime.utcnow()
+        
+        if progress.last_click_time:
+            time_since_last_click = current_server_time - progress.last_click_time
+            hours_since_last_click = time_since_last_click.total_seconds() / 3600
+            
+            print(f"DEBUG: Último click: {progress.last_click_time}")
+            print(f"DEBUG: Hora actual servidor: {current_server_time}") 
+            print(f"DEBUG: Horas transcurridas: {hours_since_last_click}")
+            
+            if hours_since_last_click < 12:
+                hours_remaining = 12 - hours_since_last_click
+                return jsonify({
+                    'success': False,
+                    'message': f'Debes esperar {hours_remaining:.1f} horas para sumar puntos nuevamente',
+                    'next_available': (progress.last_click_time + timedelta(hours=12)).isoformat(),
+                    'debug_info': {
+                        'last_click': progress.last_click_time.isoformat(),
+                        'current_server_time': current_server_time.isoformat(),
+                        'hours_passed': hours_since_last_click
+                    }
+                }), 429
+        
+        # ✅ SI PUEDE SUMAR PUNTOS
         progress.current_points += config.points_per_click
         
-        # Actualizar el tiempo del último clic
-        progress.last_click_time = datetime.utcnow()
+        # Actualizar el tiempo del último clic CON HORA DEL SERVIDOR
+        progress.last_click_time = current_server_time
         
         if progress.current_points > config.max_points:
             progress.current_points = config.max_points
@@ -135,7 +160,110 @@ def add_points():
             'success': True,
             'current_points': progress.current_points,
             'max_points': config.max_points,
-            'percentage': current_percentage
+            'percentage': current_percentage,
+            'points_per_click': config.points_per_click,
+            'next_available': (current_server_time + timedelta(hours=12)).isoformat(),
+            'debug_info': {
+                'last_click_updated': progress.last_click_time.isoformat()
+            }
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ✅ NUEVO: Endpoint para verificar estado del límite CON DEBUG
+@app.route('/api/click_limit_status')
+def click_limit_status():
+    """Verifica el estado actual del límite de clicks"""
+    try:
+        progress = Progress.query.first()
+        if not progress:
+            return jsonify({'can_click': True})
+        
+        current_server_time = datetime.utcnow()
+        
+        if progress.last_click_time:
+            time_since_last_click = current_server_time - progress.last_click_time
+            hours_since_last_click = time_since_last_click.total_seconds() / 3600
+            
+            print(f"DEBUG STATUS: Horas desde último click: {hours_since_last_click}")
+            
+            if hours_since_last_click < 12:
+                next_available = progress.last_click_time + timedelta(hours=12)
+                return jsonify({
+                    'can_click': False,
+                    'next_available': next_available.isoformat(),
+                    'hours_remaining': 12 - hours_since_last_click,
+                    'debug_info': {
+                        'last_click': progress.last_click_time.isoformat(),
+                        'current_server_time': current_server_time.isoformat(),
+                        'hours_passed': hours_since_last_click
+                    }
+                })
+        
+        return jsonify({'can_click': True})
+        
+    except Exception as e:
+        return jsonify({'can_click': True, 'error': str(e)})
+
+# ✅ NUEVO: Endpoints de DEBUG para pruebas
+@app.route('/admin/debug_reset_time', methods=['POST'])
+def debug_reset_time():
+    """Endpoint de DEBUG para resetear el tiempo de último click"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        progress = Progress.query.first()
+        if not progress:
+            return jsonify({'error': 'Progreso no encontrado'}), 500
+            
+        # Resetear a una hora específica (por ejemplo, hace 13 horas)
+        debug_time = datetime.utcnow() - timedelta(hours=13)
+        progress.last_click_time = debug_time
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Tiempo reseteado a: {debug_time}',
+            'new_last_click': debug_time.isoformat()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/debug_force_click', methods=['POST'])
+def debug_force_click():
+    """Endpoint de DEBUG para forzar un click sin límite de tiempo"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        progress = Progress.query.first()
+        config = SystemConfig.query.first()
+        
+        if not progress or not config:
+            return jsonify({'error': 'Configuración no encontrada'}), 500
+        
+        # Forzar suma de puntos
+        progress.current_points += config.points_per_click
+        progress.last_click_time = datetime.utcnow()
+        
+        if progress.current_points > config.max_points:
+            progress.current_points = config.max_points
+        
+        current_percentage = (progress.current_points / config.max_points) * 100
+        check_achievements(current_percentage)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'current_points': progress.current_points,
+            'message': 'Click forzado exitosamente'
         })
     
     except Exception as e:
@@ -229,6 +357,8 @@ def reset_progress():
             return jsonify({'error': 'Progreso no encontrado'}), 500
             
         progress.current_points = 0.0
+        # ✅ NUEVO: También reiniciar el tiempo del último click
+        progress.last_click_time = datetime.utcnow() - timedelta(hours=13)
         db.session.commit()
         
         return jsonify({'success': True})
@@ -467,6 +597,13 @@ def check_achievements(current_percentage):
             db.session.add(new_achievement)
     
     db.session.commit()
+
+@app.route('/api/server_time')
+def get_server_time():
+    """Devuelve la hora actual del servidor"""
+    return jsonify({
+        'server_time': datetime.utcnow().isoformat()
+    })    
 
 # Health check para Azure
 @app.route('/health')
